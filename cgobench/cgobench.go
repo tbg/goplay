@@ -9,12 +9,6 @@ import "sync"
 //void fooSleep() { sleep(100); }
 import "C"
 
-func benchCGo(n int) {
-	for i := 0; i < n; i++ {
-		C.foo()
-	}
-}
-
 func foo() {}
 
 func startSleeper(wg *sync.WaitGroup) {
@@ -24,7 +18,13 @@ func startSleeper(wg *sync.WaitGroup) {
 	}()
 }
 
-func benchGo(n int) {
+func CallCGo(n int) {
+	for i := 0; i < n; i++ {
+		C.foo()
+	}
+}
+
+func CallGo(n int) {
 	for i := 0; i < n; i++ {
 		foo()
 	}
