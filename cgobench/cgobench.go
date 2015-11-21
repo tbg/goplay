@@ -1,5 +1,5 @@
 // Package cgobench contains some simple code highlighting things to keep in
-// mind when using CGo.
+// mind when using Cgo.
 package cgobench
 
 import "sync"
@@ -18,7 +18,7 @@ func startSleeper(wg *sync.WaitGroup) {
 	}()
 }
 
-func CallCGo(n int) {
+func CallCgo(n int) {
 	for i := 0; i < n; i++ {
 		C.foo()
 	}

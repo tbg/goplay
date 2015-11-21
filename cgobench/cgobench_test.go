@@ -14,7 +14,7 @@ import (
 // BenchmarkGo-8  2000000000    1.82 ns/op
 
 func BenchmarkCGO(b *testing.B) {
-	CallCGo(b.N)
+	CallCgo(b.N)
 }
 
 // BenchmarkGo must be called with `-gcflags -l` to avoid inlining.
@@ -23,7 +23,7 @@ func BenchmarkGo(b *testing.B) {
 	CallGo(b.N)
 }
 
-// Example_cgo_sleep demonstrates that each blocking CGo call consumes a
+// Example_cgo_sleep demonstrates that each blocking Cgo call consumes a
 // new thread.
 func Example_cgo_sleep() {
 	const maxThreads = 50
