@@ -1,6 +1,6 @@
 # A Bug's Life
 
-*The first computer bugs were found by [cleaning out mechanical parts](https://upload.wikimedia.org/wikipedia/commons/8/8a/H96566k.jpg). The bug described below unfortunately couldn't be tracked down in such a straightforward fashion. But the discovery story is more interesting than "I looked into hundreds of relays".*
+*The first computer bugs were found by [cleaning out mechanical parts](https://upload.wikimedia.org/wikipedia/commons/8/8a/H96566k.jpg). The bug described below unfortunately couldn't be tracked down in such a straightforward fashion. But the discovery story is more interesting than "I looked into hundreds of relays" and goes way down the rabbit hole as we tag along.*
 
 A couple of days ago, my colleague [@tamird](https://github.com/tamird) opened issue [#13470](https://github.com/golang/go/issues/13470) against [golang/go](https://github.com/golang/go). In it, he gives the following snippet:
 
@@ -94,7 +94,9 @@ But, in our example this should be the case (after all, we're using `go run` dir
 
 Secondly, it's the call to `user.Current()` which crashes the program. What's the role of `net.Dial()`? Well, the big surprise is that you need that call or the program turns boring again. Same for the loop. Remove it and voila, no error. So this isn't a simple case of a call failing, it's a weird concoction of random things that reproduce this error.
 
-The bad news here is that the time of writing, we don't know what the cause of this behaviour is. But when I see a bug report like that, I'm equally curious about how one would ever come up with examples like that. And that's the good news, I'm going to walk you through that process here.
+How would one even come up with this? Surely this isn't straight from our codebase?
+Good news! I'm going to walk you all the way through, from the first high-level
+failure to an ending which is only happy when considering the bug's perspective.
 
 [1] on OSX, static builds basically don't work. But you can follow along using `docker -ti cockroachdb/builder`.
 
@@ -248,4 +250,146 @@ and the following patch to `$(go env GOROOT)/src/net/fd_unix.go`:
 
 I was happy with this and stepped out for early dinner, but [@tamird](https://github.com/tamird) kept drilling to get rid of the stdlib patch. He threw together `net.Dial()` and `user.Current()` in the loop (to account for randomness), figured out that the test setup wasn't needed and must've been delighted to arrive at the example at the beginning of this post.
 
-And that's where we are. I hope you've enjoyed tagging along and that you're as curious about the root cause of this behaviour as we are (although I'm not so sure the explanation will be as interesting as the discovery). When the time has come to add the final section to this blog post, I'm hoping that the bug has led an interesting life and will provide an appropriate obituary.
+## Pest Control
+
+Fast-forward four days, two dozen comments and one closed issue [#13470](https://github.com/golang/go/issues/13470) later, we're a little wiser. After some back and forth on [#13470](https://github.com/golang/go/issues/13470) about glibc versions and `LD_PRELOAD`, [@mwhudson](https://github.com/mwhudson) posted some interesting findings. To trace what he did, we're going to leave Go-land completely - we're seeing a segfault from a library call, so that's where our debugging has to take place. Time to dust off `gdb`<sup>4</sup>!
+
+```
+(gdb) run
+Starting program: /go/src/github.com/tschottdorf/goplay/issue_13470/boom
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+[New Thread 0x7ffff7e4a700 (LWP 17)]
+[New Thread 0x7ffff7609700 (LWP 18)]
+[New Thread 0x7ffff6e08700 (LWP 19)]
+[New Thread 0x7ffff6607700 (LWP 20)]
+
+Program received signal SIGSEGV, Segmentation fault.
+[Switching to Thread 0x7ffff6607700 (LWP 20)]
+0x00007ffff5bbca5c in internal_getpwuid_r (ent=<optimized out>, errnop=<optimized out>,
+    buflen=<optimized out>, buffer=<optimized out>, result=<optimized out>, uid=<optimized out>)
+    at nss_compat/compat-pwd.c:961
+warning: Source file is more recent than executable.
+961		  while (isspace (*p))
+```
+
+This gives us a location in the code (`nss_compat/compat-pwd.c:961`) but it's easy to
+see that it doesn't really matter. `*p` is not the culprit (if it were, we'd see `0x0` and not `0x5e` as the illegal memory access) and in fact looking at the assembly code we see
+
+```
+(gdb) disas
+Dump of assembler code for function _nss_compat_getpwuid_r:
+[...]
+   0x00007ffff5bbca44 <+308>:	callq  0x7ffff5bba3a0 <__ctype_b_loc@plt>
+   0x00007ffff5bbca49 <+313>:	mov    (%rax),%rcx
+   0x00007ffff5bbca4c <+316>:	jmp    0x7ffff5bbca54 <_nss_compat_getpwuid_r+324>
+   0x00007ffff5bbca4e <+318>:	xchg   %ax,%ax
+   0x00007ffff5bbca50 <+320>:	add    $0x1,%r15
+   0x00007ffff5bbca54 <+324>:	movzbl (%r15),%eax
+   0x00007ffff5bbca58 <+328>:	movsbq %al,%rdx
+=> 0x00007ffff5bbca5c <+332>:	testb  $0x20,0x1(%rcx,%rdx,2)
+[...]
+```
+
+Since we're looking at the expansion of `isspace()` and `testb` is bitwise
+comparison, `$0x20` strikes us as familiar (it's a space); `%rcx` is populated
+from `__ctype_b_loc@plt` and `%rdx` is used as a type of offset. Remember that
+trying to read `0x5e` was causing the segfault? We have
+
+```
+(gdb) info registers rcx rdx
+rcx            0x0	0
+rdx            0x72	114
+```
+
+and `0x1(%rcx,%rdx,2) = 0x1 + %rcx + 2*%rdx = 0x1 + 2*0x72 = 0x5e`. Clearly
+we're looking at the right code here, and it's odd that `%rcx` would be zero
+since `__ctype_b_loc` [should](https://refspecs.linuxfoundation.org/LSB_3.0.0/LSB-PDA/LSB-PDA/baselib---ctype-b-loc.html)
+
+> [...] return a pointer into an array of characters in the current locale that contains characteristics for each character in the current character set.
+
+That's clearly not what it did here. Let's look at its code:
+
+```
+$ objdump -D ./boom | grep -A 10 __ctype_b_loc
+000000000051de70 <__ctype_b_loc>:
+  51de70:	48 c7 c0 e0 ff ff ff 	mov    $0xffffffffffffffe0,%rax
+  51de77:	64 48 03 04 25 00 00 	add    %fs:0x0,%rax
+  51de7e:	00 00
+  51de80:	c3                   	retq
+  [...]
+```
+
+Whatever happens here, the `%fs` register is involved, and it [appears that this
+register plays a role in thread-local storage](http://stackoverflow.com/questions/6611346/how-are-the-fs-gs-registers-used-in-linux-amd64). Knowing that, we set a breakpoint just before the crash and investigate the registers, while also keeping an eye on thread context switches:
+
+```
+(gdb) br nss_compat/compat-pwd.c:961
+(gdb) run
+[...]
+Breakpoint 1, internal_getpwuid_r (ent=<optimized out>, errnop=<optimized out>,
+    buflen=<optimized out>, buffer=<optimized out>, result=<optimized out>, uid=<optimized out>)
+    at nss_compat/compat-pwd.c:961
+961		  while (isspace (*p))
+(gdb) disas
+[...]
+=> 0x00007ffff5bbca54 <+324>:	movzbl (%r15),%eax
+   0x00007ffff5bbca58 <+328>:	movsbq %al,%rdx
+   0x00007ffff5bbca5c <+332>:	testb  $0x20,0x1(%rcx,%rdx,2)
+[...]
+(gdb) si 2
+0x00007ffff5bbca5c	961		  while (isspace (*p))
+(gdb) info register fs rcx rdx
+fs             0x63	99
+rcx            0x7ffff57449c0	140737311427008
+rdx            0x72	114
+(gdb) c
+Continuing.
+[Switching to Thread 0x7ffff7609700 (LWP 136)]
+
+Breakpoint 1, internal_getpwuid_r (ent=<optimized out>, errnop=<optimized out>,
+    buflen=<optimized out>, buffer=<optimized out>, result=<optimized out>, uid=<optimized out>)
+    at nss_compat/compat-pwd.c:961
+961		  while (isspace (*p))
+(gdb) si 2
+0x00007ffff5bbca5c	961		  while (isspace (*p))
+(gdb) info register fs rcx rdx
+fs             0x0	0
+rcx            0x0	0
+rdx            0x72	114
+(gdb) si
+
+Program received signal SIGSEGV, Segmentation fault.
+```
+
+Aha! When `%fs = 99`, apparently all is well, but in an iteration which has
+`%fs = 0`, all hell breaks loose. Note also that there's a context switch
+right before the crash (`[Switching to Thread 0x7ffff7609700 (LWP 136)]`).
+
+## Hibernation
+
+This seems to have less and less to do with Go. And indeed, it's only a short
+time after that [ianlancetaylor](https://github.com/ianlancetaylor) comes up
+with a `C` example which exhibits the same problem. This seems like good news,
+but filing the [upstream issue](https://sourceware.org/bugzilla/show_bug.cgi?id=19341),
+it becomes apparent that `glibc` supports "some static linking" but not all -
+in particular, threading is fairly broken and this has been known for a while
+and would be quite nontrivial to fix. Roughly what happens is the following:
+
+* Thread 1 calls out to `libnss_compat` (via `user.Current()`). `libnss` wants
+  to use thread-local storage (since the main binary has no dynamic symbol table),
+  causing initialization of `ctype` information in the thread-local storage of
+  the thread active at load time.
+* Thread 2 runs into `libnss_compat` as well, but the initialization happened
+  only on the first thread. `__ctype_b_loc` relies on this initialization, so
+  it returns garbage. Boom.
+
+Summing up a comment by [Carlos O'Donell](https://sourceware.org/bugzilla/show_bug.cgi?id=19341#c1), the bug is likely to live forever and hard to fix; in turn, we're
+[thinking about](https://github.com/cockroachdb/cockroach/pull/3343) linking
+against [musl-libc](http://www.musl-libc.org) instead or - gasp - just doing
+away with static binaries altogether.
+
+Well done, little bug. Well done.
+
+
+[4] [Dockerfile here](https://github.com/tschottdorf/goplay/blob/master/issue_13470/Dockerfile); invoke via `build -t gdb . && docker run -ti gdb`.
