@@ -31,8 +31,8 @@ func main() {
 }
 ```
 
-Looks about as innocuous as nonsensical, right? If we run it naively, nothing
-happens:
+Looks about as innocuous as it is nonsensical, right? If we run it naively,
+nothing happens:
 
 ```bash
 $ go run main.go
@@ -101,7 +101,7 @@ Basically, [@tamird](https://github.com/tamird) was building a static test
 binary with the goal of running it during nightly builds. The test uses
 [lib/pq](https://github.com/lib/pq) to connect to a [Cockroach DB
 cluster](http://github.com/cockroachdb/cockroach) (which essentially speaks
-Postgres' SQL dialect). You already know what happened when he tried to run it:
+Postgres' wire protocol). You already know what happened when he tried to run it:
 
 ```
 fatal error: unexpected signal during runtime execution
@@ -233,7 +233,8 @@ func TestBoom(t *testing.T) {
     t.Fatalf("conn: %s, err: %s", conn, err)
 }
 
-// cgo.go - without this, don't get a static binary no matter what
+// cgo.go - without this, we don't get a static binary.
+// Presumably we could run with CGO_ENABLED=1 instead.
 package cgo_static_boom
 
 import "C"
