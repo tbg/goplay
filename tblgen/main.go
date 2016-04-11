@@ -18,21 +18,24 @@ const batchUsers = 1 << 4
 
 const (
 	createStmt = `
+-- Not idempotent since we can't do that in Postgres.
+-- These initial statements will simply error out when we've
+-- already run it before.
 CREATE DATABASE IF NOT EXISTS track_choices;
+SET DATABASE = track_choices;
 
-CREATE TABLE IF NOT EXISTS track_choices.track_choices (
-  user_id int NOT NULL DEFAULT 0,
-  track_id int NOT NULL DEFAULT 0,
+CREATE TABLE IF NOT EXISTS track_choices (
+  user_id bigint NOT NULL DEFAULT 0,
+  track_id bigint NOT NULL DEFAULT 0,
   created_at timestamp NOT NULL,
-  PRIMARY KEY (user_id, track_id),
-  INDEX (user_id, created_at),
-  INDEX (track_id, created_at)
+  PRIMARY KEY (user_id, track_id)
 );
 
--- TRUNCATE TABLE track_choices.track_choices;
+CREATE INDEX user_created ON track_choices (user_id, created_at);
+CREATE INDEX track_created ON track_choices (track_id, created_at);
 `
 
-	insertStmtPrefix = `INSERT INTO track_choices.track_choices (user_id, track_id, created_at) VALUES `
+	insertStmtPrefix = `INSERT INTO track_choices (user_id, track_id, created_at) VALUES `
 )
 
 func main() {
