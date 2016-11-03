@@ -128,3 +128,18 @@ func BenchmarkAllocOnReturnFromParam(b *testing.B) {
 		*k++
 	}
 }
+
+type Receiver struct {
+	val int
+}
+
+func (r *Receiver) Mutate() {
+	r.val++
+}
+
+func BenchmarkAllocOnPointerReceiver(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var r Receiver
+		r.Mutate()
+	}
+}
