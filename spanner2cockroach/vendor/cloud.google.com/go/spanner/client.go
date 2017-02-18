@@ -33,7 +33,8 @@ import (
 )
 
 const (
-	prodAddr = "spanner.googleapis.com:443"
+	//prodAddr = "spanner.googleapis.com:443"
+	prodAddr = "localhost:26257"
 
 	// resourcePrefixHeader is the name of the metadata header used to indicate
 	// the resource being operated on.
@@ -119,7 +120,9 @@ func NewClientWithConfig(ctx context.Context, database string, config ClientConf
 		database: database,
 		md:       metadata.Pairs(resourcePrefixHeader, database, apiClientHeader, clientUserAgent),
 	}
-	allOpts := []option.ClientOption{option.WithEndpoint(prodAddr), option.WithScopes(Scope), option.WithUserAgent(clientUserAgent)}
+	allOpts := []option.ClientOption{option.WithEndpoint(prodAddr),
+		// option.WithScopes(Scope),
+		option.WithUserAgent(clientUserAgent)}
 	allOpts = append(allOpts, opts...)
 	// Prepare gRPC channels.
 	if config.NumChannels == 0 {

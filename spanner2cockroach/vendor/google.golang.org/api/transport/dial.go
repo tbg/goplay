@@ -27,8 +27,6 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/oauth"
 
 	gtransport "google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/internal"
@@ -144,7 +142,7 @@ func DialGRPC(ctx context.Context, opts ...option.ClientOption) (*grpc.ClientCon
 		}
 		o.TokenSource = ts
 	}
-	if o.TokenSource == nil {
+	if false && o.TokenSource == nil {
 		var err error
 		o.TokenSource, err = google.DefaultTokenSource(ctx, o.Scopes...)
 		if err != nil {
@@ -152,8 +150,9 @@ func DialGRPC(ctx context.Context, opts ...option.ClientOption) (*grpc.ClientCon
 		}
 	}
 	grpcOpts := []grpc.DialOption{
-		grpc.WithPerRPCCredentials(oauth.TokenSource{o.TokenSource}),
-		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		grpc.WithInsecure(),
+		// grpc.WithPerRPCCredentials(oauth.TokenSource{o.TokenSource}),
+		// grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}
 	if appengineDialerHook != nil {
 		// Use the Socket API on App Engine.
