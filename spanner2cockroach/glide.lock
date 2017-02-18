@@ -1,0 +1,114 @@
+hash: 570cf9f8328b09d5088355eb001901d2257234e166149d83e6b28248ad5b38aa
+updated: 2017-02-18T01:18:21.550845413-05:00
+imports:
+- name: cloud.google.com/go
+  version: 65216237311a9cfc641e2ec8188df94c0e05ddf4
+  subpackages:
+  - civil
+  - compute/metadata
+  - internal
+  - internal/atomiccache
+  - internal/fields
+  - internal/version
+  - longrunning
+  - spanner
+  - spanner/admin/database/apiv1
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: github.com/golang/protobuf
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  subpackages:
+  - proto
+  - protoc-gen-go/descriptor
+  - ptypes
+  - ptypes/any
+  - ptypes/duration
+  - ptypes/empty
+  - ptypes/struct
+  - ptypes/timestamp
+  - ptypes/wrappers
+- name: github.com/googleapis/gax-go
+  version: da06d194a00e19ce00d9011a13931c3f6f6887c7
+- name: github.com/GoogleCloudPlatform/golang-samples
+  version: e91e4141e3d689498a9989d2b88308d6ed2f027b
+  subpackages:
+  - spanner/spanner_snippets
+- name: golang.org/x/net
+  version: da2b4fa28524a3baf148c1b94df4440267063c88
+  subpackages:
+  - context
+  - context/ctxhttp
+  - http2
+  - http2/hpack
+  - idna
+  - internal/timeseries
+  - lex/httplex
+  - trace
+- name: golang.org/x/oauth2
+  version: b9780ec78894ab900c062d58ee3076cd9b2a4501
+  subpackages:
+  - google
+  - internal
+  - jws
+  - jwt
+- name: golang.org/x/text
+  version: 85c29909967d7f171f821e7a42e7b7af76fb9598
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
+- name: google.golang.org/api
+  version: bc20c61134e1d25265dd60049f5735381e79b631
+  subpackages:
+  - googleapi/transport
+  - internal
+  - iterator
+  - option
+  - transport
+- name: google.golang.org/appengine
+  version: 2e4a801b39fc199db615bfca7d0b9f8cd9580599
+  subpackages:
+  - internal
+  - internal/app_identity
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/modules
+  - internal/remote_api
+  - internal/socket
+  - internal/urlfetch
+  - socket
+  - urlfetch
+- name: google.golang.org/genproto
+  version: dee11a626cb8e7ff045ac9413dcd8a92e72f5863
+  subpackages:
+  - googleapis/api/annotations
+  - googleapis/api/label
+  - googleapis/api/metric
+  - googleapis/api/monitoredres
+  - googleapis/api/serviceconfig
+  - googleapis/iam/v1
+  - googleapis/longrunning
+  - googleapis/rpc/errdetails
+  - googleapis/rpc/status
+  - googleapis/spanner/admin/database/v1
+  - googleapis/spanner/v1
+  - protobuf/api
+  - protobuf/ptype
+  - protobuf/source_context
+- name: google.golang.org/grpc
+  version: 85497e2c516cd289bce5551b840ee27c2a0d6878
+  subpackages:
+  - codes
+  - credentials
+  - credentials/oauth
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - peer
+  - stats
+  - tap
+  - transport
+testImports: []

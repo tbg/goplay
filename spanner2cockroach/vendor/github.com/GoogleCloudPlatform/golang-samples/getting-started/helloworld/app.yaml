@@ -1,0 +1,5 @@
+# [START runtime]
+runtime: go
+api_version: go1
+env: flex
+# [END runtime]

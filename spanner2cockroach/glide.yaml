@@ -1,0 +1,8 @@
+package: github.com/tschottdorf/spanner2cockroach
+import:
+- package: cloud.google.com/go
+  subpackages:
+  - spanner
+- package: github.com/GoogleCloudPlatform/golang-samples
+  subpackages:
+  - spanner/spanner_snippets
