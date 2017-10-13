@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 // Run via go test -bench . ./... -benchmem -memprofilerate 1
 
@@ -48,4 +51,20 @@ func BenchmarkClosureInline(b *testing.B) {
 		}
 	}
 	b.StopTimer()
+}
+
+func BenchmarkClosureOverPointer(b *testing.B) {
+	p := new(int)
+	err := errors.New("foo")
+	var lastP *int
+	for i := 0; i < b.N; i++ {
+		f := func() error {
+			q := *p
+			var _ = q
+			lastP = p
+			return err
+		}
+
+		_ = f()
+	}
 }
