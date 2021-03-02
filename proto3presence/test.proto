@@ -1,0 +1,13 @@
+syntax = "proto3";
+option go_package = "main";
+
+message A {
+  bytes b = 1;
+}
+
+message Foo {
+  int32          i     = 1;
+  optional int32 i_opt = 2; // new feature (turns it into ptr)
+  A              a     = 3;
+  optional A     a_opt = 4; // new feature (no effect)
+}
