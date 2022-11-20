@@ -6,7 +6,7 @@ rpc_service BookmarksService {
 }
 
 table AddRequest {
-  URL:string;
+  url:string;
   title:string;
 }
 
@@ -15,7 +15,7 @@ table AddResponse {}
 table LastAddedRequest {}
 
 table LastAddedResponse {
-  ID:string;
-  URL:string;
+  id:string;
+  url:string;
   title:string;
 }
