@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package service;
+
+service BookmarksService {
+    rpc Add(AddRequest) returns (AddResponse) {}
+    rpc LastAdded(LastAddedRequest) returns (LastAddedResponse) {}
+}
+
+message AddRequest {
+    string URL = 1;
+    string title = 2;
+}
+
+message AddResponse {}
+
+message LastAddedRequest {}
+
+message LastAddedResponse {
+    string ID = 1;
+    string URL = 2;
+    string title = 3;
+}

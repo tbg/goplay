@@ -1,0 +1,21 @@
+namespace bookmarks;
+
+rpc_service BookmarksService {
+  Add(AddRequest):AddResponse(streaming: "none");
+  LastAdded(LastAddedRequest):LastAddedResponse (streaming: "none");
+}
+
+table AddRequest {
+  URL:string;
+  title:string;
+}
+
+table AddResponse {}
+
+table LastAddedRequest {}
+
+table LastAddedResponse {
+  ID:string;
+  URL:string;
+  title:string;
+}
