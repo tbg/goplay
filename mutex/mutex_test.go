@@ -83,6 +83,7 @@ func BenchmarkInc(b *testing.B) {
 func inParallel(b *testing.B, add func(int64), parallelism int) {
 	var wg sync.WaitGroup
 	wg.Add(parallelism)
+	b.ResetTimer()
 	for p := 0; p < parallelism; p++ {
 		go func() {
 			defer wg.Done()
