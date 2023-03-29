@@ -57,7 +57,7 @@ func (c *counters) addShardedMutex(v int64) {
 }
 
 func BenchmarkInc(b *testing.B) {
-	for p := 1; p < 1e9; p *= 2 {
+	for p := 1; p < 1048576; p *= 2 {
 		b.Run("parallelism="+strconv.Itoa(p), func(b *testing.B) {
 			b.Run("atomic", func(b *testing.B) {
 				c := newCounters()
