@@ -1,8 +1,8 @@
 package mutex
 
 import (
-	"fmt"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -57,31 +57,22 @@ func (c *counters) addShardedMutex(v int64) {
 }
 
 func BenchmarkInc(b *testing.B) {
-	threads := []int{1, 32, 128, 512, 1024, 4096, 8192, 16384, 32768, 65535, 2 * 65535, 3 * 65535, 4 * 65535}
-	b.Run("atomic", func(b *testing.B) {
-		for _, p := range threads {
-			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
+	for p := 1; p < 1e9; p *= 2 {
+		b.Run("parallelism="+strconv.Itoa(p), func(b *testing.B) {
+			b.Run("atomic", func(b *testing.B) {
 				c := newCounters()
 				inParallel(b, c.addAtomic, p)
 			})
-		}
-	})
-	b.Run("mutex", func(b *testing.B) {
-		for _, p := range threads {
-			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
+			b.Run("mutex", func(b *testing.B) {
 				c := newCounters()
 				inParallel(b, c.addMutex, p)
 			})
-		}
-	})
-	b.Run("sharded", func(b *testing.B) {
-		for _, p := range threads {
-			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
+			b.Run("sharded", func(b *testing.B) {
 				c := newCounters()
 				inParallel(b, c.addShardedMutex, p)
 			})
-		}
-	})
+		})
+	}
 }
 
 func inParallel(b *testing.B, add func(int64), parallelism int) {
