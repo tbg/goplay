@@ -9,8 +9,16 @@ import (
 )
 
 type counters struct {
-	mus                 []sync.Mutex
+	mus                 []*sync.Mutex
 	a, b, c, d, e, f, g int64
+}
+
+func newCounters() *counters {
+	sl := make([]*sync.Mutex, runtime.GOMAXPROCS(0))
+	for i := range sl {
+		sl[i] = &sync.Mutex{}
+	}
+	return &counters{mus: sl}
 }
 
 func (c *counters) addAtomic(v int64) {
@@ -49,11 +57,11 @@ func (c *counters) addShardedMutex(v int64) {
 }
 
 func BenchmarkInc(b *testing.B) {
-	threads := []int{1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768}
+	threads := []int{1, 32, 128, 512, 1024, 4096, 8192, 16384, 32768}
 	b.Run("atomic", func(b *testing.B) {
 		for _, p := range threads {
 			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
-				var c counters
+				c := newCounters()
 				inParallel(b, c.addAtomic, p)
 			})
 		}
@@ -61,9 +69,7 @@ func BenchmarkInc(b *testing.B) {
 	b.Run("mutex", func(b *testing.B) {
 		for _, p := range threads {
 			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
-				c := counters{
-					mus: make([]sync.Mutex, runtime.GOMAXPROCS(0)),
-				}
+				c := newCounters()
 				inParallel(b, c.addMutex, p)
 			})
 		}
@@ -71,9 +77,7 @@ func BenchmarkInc(b *testing.B) {
 	b.Run("sharded", func(b *testing.B) {
 		for _, p := range threads {
 			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
-				c := counters{
-					mus: make([]sync.Mutex, runtime.GOMAXPROCS(0)),
-				}
+				c := newCounters()
 				inParallel(b, c.addShardedMutex, p)
 			})
 		}
