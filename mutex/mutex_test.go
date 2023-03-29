@@ -57,7 +57,7 @@ func (c *counters) addShardedMutex(v int64) {
 }
 
 func BenchmarkInc(b *testing.B) {
-	threads := []int{1, 32, 128, 512, 1024, 4096, 8192, 16384, 32768}
+	threads := []int{1, 32, 128, 512, 1024, 4096, 8192, 16384, 32768, 65535, 2 * 65535, 3 * 65535, 4 * 65535}
 	b.Run("atomic", func(b *testing.B) {
 		for _, p := range threads {
 			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
