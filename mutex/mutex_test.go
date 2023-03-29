@@ -2,13 +2,14 @@ package mutex
 
 import (
 	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
 )
 
 type counters struct {
-	mu                  sync.Mutex
+	mus                 []sync.Mutex
 	a, b, c, d, e, f, g int64
 }
 
@@ -23,7 +24,7 @@ func (c *counters) addAtomic(v int64) {
 }
 
 func (c *counters) addMutex(v int64) {
-	c.mu.Lock()
+	c.mus[0].Lock()
 	c.a += v
 	c.b += v
 	c.c += v
@@ -31,7 +32,20 @@ func (c *counters) addMutex(v int64) {
 	c.e += v
 	c.f += v
 	c.g += v
-	c.mu.Unlock()
+	c.mus[0].Unlock()
+}
+
+func (c *counters) addShardedMutex(v int64) {
+	i := int(v) % len(c.mus)
+	c.mus[i].Lock()
+	c.a += v
+	c.b += v
+	c.c += v
+	c.d += v
+	c.e += v
+	c.f += v
+	c.g += v
+	c.mus[i].Unlock()
 }
 
 func BenchmarkInc(b *testing.B) {
@@ -47,8 +61,20 @@ func BenchmarkInc(b *testing.B) {
 	b.Run("mutex", func(b *testing.B) {
 		for _, p := range threads {
 			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
-				var c counters
+				c := counters{
+					mus: make([]sync.Mutex, runtime.GOMAXPROCS(0)),
+				}
 				inParallel(b, c.addMutex, p)
+			})
+		}
+	})
+	b.Run("sharded", func(b *testing.B) {
+		for _, p := range threads {
+			b.Run(fmt.Sprintf("parallelism=%d", p), func(b *testing.B) {
+				c := counters{
+					mus: make([]sync.Mutex, runtime.GOMAXPROCS(0)),
+				}
+				inParallel(b, c.addShardedMutex, p)
 			})
 		}
 	})
