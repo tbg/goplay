@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/trace"
 	"strconv"
 	"time"
-	"trace"
 )
 
 var (
