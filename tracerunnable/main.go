@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
-	"runtime/trace"
-	"strconv"
 	"time"
+
+	exptrace "golang.org/x/exp/trace"
 )
 
 var (
@@ -47,48 +48,61 @@ func analyzeTrace(filename string, targetTime time.Duration) error {
 	}
 	defer f.Close()
 	
-	reader, err := trace.NewReader(f)
+	// Parse the trace directly from the file reader
+	reader, err := exptrace.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("failed to create trace reader: %w", err)
 	}
 	
 	// Track goroutine states at the target time
-	runnableGoroutines := make(map[uint64]bool)
-	targetTimeNs := int64(targetTime.Nanoseconds())
+	runnableGoroutines := make(map[exptrace.GoID]bool)
+	targetTimeNs := targetTime.Nanoseconds()
+	var traceStartTime exptrace.Time
+	traceStartTimeSet := false
 	
-	// Find the closest event to our target time and track goroutine states
+	// Process all events up to the target time
 	for {
 		event, err := reader.ReadEvent()
 		if err != nil {
-			if err.Error() == "EOF" {
+			if err == io.EOF {
 				break
 			}
 			return fmt.Errorf("failed to read trace event: %w", err)
 		}
 		
-		eventTimeNs := int64(event.Time())
+		// Set the trace start time from the first event
+		if !traceStartTimeSet {
+			traceStartTime = event.Time()
+			traceStartTimeSet = true
+		}
+		
+		// Calculate time offset from start of trace
+		eventTimeOffset := event.Time() - traceStartTime
 		
 		// If we've passed our target time, stop processing
-		if eventTimeNs > targetTimeNs {
+		if int64(eventTimeOffset) > int64(targetTimeNs) {
 			break
 		}
 		
 		// Track goroutine state changes
-		if gid := event.Goroutine(); gid != trace.NoGoroutine {
-			switch event.Kind() {
-			case trace.EventStateTransition:
-				// Handle goroutine state transitions
-				if st := event.StateTransition(); st.Goroutine != trace.NoGoroutine {
-					// Check if transitioning to runnable state
-					if st.New == trace.GoRunnable {
-						runnableGoroutines[uint64(st.Goroutine)] = true
-					} else if st.New == trace.GoRunning || 
-							 st.New == trace.GoWaiting ||
-							 st.New == trace.GoSyscall ||
-							 st.New == trace.GoNotExist {
-						// Remove from runnable if transitioning to other states
-						delete(runnableGoroutines, uint64(st.Goroutine))
-					}
+		switch event.Kind() {
+		case exptrace.EventStateTransition:
+			stateTransition := event.StateTransition()
+			if stateTransition.Resource.Kind == exptrace.ResourceGoroutine {
+				gid := stateTransition.Resource.Goroutine()
+				
+				// Get the goroutine's state transition (from, to)
+				_, toState := stateTransition.Goroutine()
+				
+				// Check if transitioning to runnable state
+				if toState == exptrace.GoRunnable {
+					runnableGoroutines[gid] = true
+				} else if toState == exptrace.GoRunning || 
+						 toState == exptrace.GoWaiting ||
+						 toState == exptrace.GoSyscall ||
+						 toState == exptrace.GoNotExist {
+					// Remove from runnable if transitioning to other states
+					delete(runnableGoroutines, gid)
 				}
 			}
 		}

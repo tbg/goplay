@@ -72,4 +72,12 @@ func TestAnalyzeTrace(t *testing.T) {
 			t.Errorf("analyzeTrace failed at 5ms offset: %v", err)
 		}
 	})
+
+	// Test the analyzeTrace function at 25ms offset
+	t.Run("25ms offset", func(t *testing.T) {
+		err := analyzeTrace(traceFile.Name(), 25*time.Millisecond)
+		if err != nil {
+			t.Errorf("analyzeTrace failed at 25ms offset: %v", err)
+		}
+	})
 }
