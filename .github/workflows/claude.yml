@@ -33,5 +33,6 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@beta
         with:
+          allowed_tools: "Bash(*),Edit,Replace,NotebookEditCell,GlobTool,GrepTool,BatchTool,View"
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
