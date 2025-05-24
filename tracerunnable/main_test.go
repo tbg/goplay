@@ -26,22 +26,24 @@ func TestAnalyzeTrace(t *testing.T) {
 	var wg sync.WaitGroup
 	startTime := time.Now()
 	
-	// Create multiple goroutines to do busywork
-	for i := 0; i < 5; i++ {
+	// Create many more goroutines than GOMAXPROCS to ensure contention
+	// This increases the chance of having runnable goroutines
+	numGoroutines := 50 // Much more than typical GOMAXPROCS
+	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			
 			// Do busywork for approximately 10ms
 			for time.Since(startTime) < 10*time.Millisecond {
-				// Simulate work by doing some computation
+				// Simulate intensive work by doing more computation
 				sum := 0
-				for j := 0; j < 1000; j++ {
-					sum += j
+				for j := 0; j < 10000; j++ {
+					sum += j * j
 				}
 				
 				// Yield occasionally to create more scheduling events
-				if sum%100 == 0 {
+				if sum%1000 == 0 {
 					time.Sleep(time.Microsecond)
 				}
 			}
